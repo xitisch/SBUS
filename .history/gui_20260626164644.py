@@ -13,7 +13,7 @@ try:
     print(f"Successfully connected to serial port: {SERIAL_PORT}")
     time.sleep(2)  # Wait for the serial connection to stabilize
 except Exception as e:
-    print(f"Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
+    print(f"❌ Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
     print(e)
     ser = None
 

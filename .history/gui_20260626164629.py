@@ -10,14 +10,14 @@ BAUD_RATE = 115200
 
 try:
     ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-    print(f"Successfully connected to serial port: {SERIAL_PORT}")
+    print(f"✅ Successfully connected to serial port: {SERIAL_PORT}")
     time.sleep(2)  # Wait for the serial connection to stabilize
 except Exception as e:
-    print(f"Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
+    print(f"❌ Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
     print(e)
     ser = None
 
-# ==================== Data Send Function ====================
+# ==================== 🚀 Data Send Function ====================
 def send_channels(*args):
     if not (ser and ser.is_open):
         return
@@ -41,7 +41,7 @@ def send_channels(*args):
     except Exception as err:
         label_status.config(text="Send failed", fg="red")
 
-# ==================== GUI Layout ====================
+# ==================== 🎨 GUI Layout ====================
 root = tk.Tk()
 root.title("Flapping-Wing SBUS Serial Controller")
 root.geometry("450x400")
@@ -86,4 +86,4 @@ root.mainloop()
 # Release the serial port when the window closes
 if ser and ser.is_open:
     ser.close()
-    print("Serial port closed")
+    print("🔒 Serial port closed")

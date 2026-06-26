@@ -10,10 +10,10 @@ BAUD_RATE = 115200
 
 try:
     ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-    print(f"Successfully connected to serial port: {SERIAL_PORT}")
+    print(f"✅ Successfully connected to serial port: {SERIAL_PORT}")
     time.sleep(2)  # Wait for the serial connection to stabilize
 except Exception as e:
-    print(f"Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
+    print(f"❌ Could not open serial port {SERIAL_PORT}. Check the port number or whether Arduino is using it!")
     print(e)
     ser = None
 
