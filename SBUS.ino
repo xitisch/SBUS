@@ -16,7 +16,7 @@ void setup() {
   Serial2.begin(100000, SERIAL_8E2, 16, 17, true);
   
   // 
-  Serial2.begin(100000);
+  // Serial2.begin(100000);
 
   // 
   for (int i = 0; i < 16; i++) {
