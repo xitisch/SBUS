@@ -39,6 +39,7 @@ def send_channels(*args):
 # ==================== 🎨 GUI 界面布局 ====================
 root = tk.Tk()
 root.title("扑翼机 SBUS 串口控制器")
+root.geometry("450 Vintage")
 root.geometry("450x400")
 
 # 标题

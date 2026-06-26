@@ -5,7 +5,7 @@ import time
 
 # ==================== 🛠️ 串口配置 ====================
 # 💡 请根据你电脑上实际认出来的 COM 口进行修改（比如 COM5）
-SERIAL_PORT = 'COM10' 
+SERIAL_PORT = 'COM5' 
 BAUD_RATE = 115200
 
 try:
@@ -39,6 +39,7 @@ def send_channels(*args):
 # ==================== 🎨 GUI 界面布局 ====================
 root = tk.Tk()
 root.title("扑翼机 SBUS 串口控制器")
+root.geometry("450 Vintage")
 root.geometry("450x400")
 
 # 标题
