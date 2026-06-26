@@ -3,7 +3,7 @@ from tkinter import ttk
 import serial
 import time
 
-# ==================== Serial Configuration ====================
+# ==================== 🛠️ Serial Configuration ====================
 # Change this to the COM port your computer actually detects (e.g. COM5)
 SERIAL_PORT = 'COM10'
 BAUD_RATE = 115200
