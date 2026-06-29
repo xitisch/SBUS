@@ -2,3 +2,9 @@
 .history/
 __pycache__/
 *.pyc
+
+# Arduino / PlatformIO build artifacts
+build/
+.pio/
+*.bin
+*.elf
