@@ -26,6 +26,7 @@
 #include <WiFi.h>
 #include "sbus.h"
 #include "esp_now_link.h"
+#include <esp_mac.h>
 
 // SBUS TX on Serial2, GPIO17, inverted signal (SBUS uses active-low logic)
 bfs::SbusTx sbus(&Serial2, 16, 17, true);
@@ -71,9 +72,12 @@ void setup() {
 
   // ESP-NOW runs on Wi-Fi in station mode, disconnected from any AP
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  Serial.print("Receiver MAC: ");
-  Serial.println(WiFi.macAddress());  // note this address for the transmitter
+    WiFi.disconnect();
+
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    Serial.printf("Receiver MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW init failed");

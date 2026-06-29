@@ -28,7 +28,7 @@
 
 // Destination MAC. Broadcast by default; replace with the receiver's MAC
 // (printed over serial when the receiver boots) to pin the link.
-uint8_t RECEIVER_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t RECEIVER_MAC[6] = {0x28, 0x05, 0xA5, 0x31, 0xC2, 0x98};
 
 // Resend the latest channel values at least this often (ms) so the receiver's
 // failsafe stays satisfied even when the host sends no updates.
@@ -100,7 +100,7 @@ void loop() {
       int startIndex = 0;
       int idx = 0;
 
-      while ((commaIndex = data.indexOf(',', startIndex)) != -1 && idx < 5) {
+      while ((commaIndex = data.indexOf(',', startIndex)) != -1 && idx <= 5) {
         int val = data.substring(startIndex, commaIndex).toInt();
         userChannels[targetChannels[idx]] = constrain(val, 1000, 2000);
         startIndex = commaIndex + 1;
