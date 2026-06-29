@@ -107,23 +107,40 @@ def send_channels(*_):
 
 
 def create_slider(label_text, default_val, min_val=1000, max_val=2000):
-    """Add a labeled horizontal slider row to root and return the Scale widget."""
+    """Add a labeled horizontal slider row to root and return the Scale widget.
+
+    The value box is an editable Entry: dragging the slider updates the box,
+    and typing a value then pressing Enter moves the slider to that value.
+    """
     frame = tk.Frame(root)
     frame.pack(fill='x', padx=20, pady=5)
 
     tk.Label(frame, text=label_text, width=16, anchor='w').pack(side='left')
 
-    val_lbl = tk.Label(frame, text=str(default_val), width=5)
-    val_lbl.pack(side='right')
+    val_var = tk.StringVar(value=str(default_val))
+    val_entry = tk.Entry(frame, textvariable=val_var, width=6, justify='center')
+    val_entry.pack(side='right')
 
     slider = ttk.Scale(frame, from_=min_val, to=max_val, orient='horizontal')
     slider.set(default_val)
     slider.pack(side='left', fill='x', expand=True, padx=5)
 
-    # Default-argument capture prevents the late-binding closure pitfall
+    # Slider -> box: reflect the slider value in the box as it moves, then send
     slider.config(
-        command=lambda v, vl=val_lbl: [vl.config(text=str(int(float(v)))), send_channels()]
+        command=lambda v: [val_var.set(str(int(float(v)))), send_channels()]
     )
+
+    # Box -> slider: typing a value and pressing Enter moves the slider
+    def on_entry(_event=None):
+        try:
+            val = int(float(val_var.get()))
+        except ValueError:
+            val = int(slider.get())            # revert to current on invalid input
+        val = max(min_val, min(max_val, val))  # clamp to the channel range
+        val_var.set(str(val))
+        slider.set(val)                        # fires the slider command -> sends
+    val_entry.bind('<Return>', on_entry)
+
     return slider
 
 
