@@ -25,6 +25,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include "esp_now_link.h"
+#include <esp_mac.h>
 
 // Destination MAC. Broadcast by default; replace with the receiver's MAC
 // (printed over serial when the receiver boots) to pin the link.
@@ -65,8 +66,10 @@ void setup() {
   // ESP-NOW runs on Wi-Fi in station mode, disconnected from any AP
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
-  Serial.print("Transmitter MAC: ");
-  Serial.println(WiFi.macAddress());
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  Serial.printf("Transmitter MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW init failed");
@@ -100,7 +103,7 @@ void loop() {
       int startIndex = 0;
       int idx = 0;
 
-      while ((commaIndex = data.indexOf(',', startIndex)) != -1 && idx <= 5) {
+      while ((commaIndex = data.indexOf(',', startIndex)) != -1 && idx < 5) {
         int val = data.substring(startIndex, commaIndex).toInt();
         userChannels[targetChannels[idx]] = constrain(val, 1000, 2000);
         startIndex = commaIndex + 1;

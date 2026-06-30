@@ -2,42 +2,30 @@
  * receiver.ino
  *
  * ESP32 firmware for the SBUS *receiver* node (mounted on the robot).
+ * Receives channel values from the transmitter over ESP-NOW and forwards
+ * them to the robot as an SBUS signal on Serial2 (GPIO17, inverted, 100k 8E2).
  *
- * Receives channel values from the transmitter node over ESP-NOW and
- * forwards them to the flapping-wing robot as an SBUS signal on Serial2.
- * This is the wireless counterpart of the old wired SBUS bridge: the USB
- * serial parsing now lives on the transmitter, and this node only consumes
- * ESP-NOW packets and drives the SBUS output.
- *
- * Link:   transmitter --(ESP-NOW)--> receiver --(SBUS)--> robot
- *
- * ESP-NOW payload: SbusPacket (see esp_now_link.h), 16 channel values.
- * SBUS hardware:   GPIO17 (TX), inverted logic, 100kbaud, 8E2.
- *
- * Failsafe: if no packet arrives within LINK_TIMEOUT_MS the output drops to
- * a safe state (throttle minimum, SBUS failsafe flag set) until the link
- * recovers.
- *
- * Dependencies: bolderflight/sbus  (provides sbus.h / bfs::SbusTx)
- *               esp_now / WiFi      (bundled with the ESP32 Arduino core)
+ * Failsafe: if no packet arrives within LINK_TIMEOUT_MS the output drops to a
+ * safe state (throttle minimum, SBUS failsafe flag set) until the link recovers.
  */
 
 #include <esp_now.h>
 #include <WiFi.h>
+#include <esp_mac.h>
 #include "sbus.h"
 #include "esp_now_link.h"
-#include <esp_mac.h>
 
 // SBUS TX on Serial2, GPIO17, inverted signal (SBUS uses active-low logic)
 bfs::SbusTx sbus(&Serial2, 16, 17, true);
 
 uint16_t userChannels[16];
 
-// Timestamp of the most recently received ESP-NOW packet, for the failsafe.
+// Link-state, updated from the ESP-NOW receive callback
 volatile uint32_t lastPacketMs = 0;
 volatile bool linkActive = false;
+volatile bool packetReceived = false;
 
-// Load the safe channel values used at startup and when the link is lost.
+// Safe channel values: used at startup and when the link is lost.
 void applyFailsafe() {
   for (int i = 0; i < 16; i++) {
     userChannels[i] = 1500;
@@ -59,6 +47,7 @@ void onDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
   }
   lastPacketMs = millis();
   linkActive = true;
+  packetReceived = true;
 }
 
 void setup() {
@@ -72,12 +61,13 @@ void setup() {
 
   // ESP-NOW runs on Wi-Fi in station mode, disconnected from any AP
   WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
+  WiFi.disconnect();
 
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    Serial.printf("Receiver MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  // Read MAC from efuse (WiFi.macAddress() returns zeros on core v3.x here)
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  Serial.printf("Receiver MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW init failed");
@@ -95,10 +85,34 @@ void loop() {
     Serial.println("Link lost - failsafe engaged");
   }
 
+  // Debug: print channels when a new packet arrives and a value changed
+  if (packetReceived) {
+    packetReceived = false;
+
+    static uint16_t lastPrinted[16] = {0};
+    int dbg[] = {0, 1, 2, 4, 5, 7};  // CH1,CH2,CH3,CH5,CH6,CH8
+    bool changed = false;
+    for (int k = 0; k < 6; k++)
+      if (userChannels[dbg[k]] != lastPrinted[dbg[k]]) changed = true;
+
+    if (changed) {
+      Serial.print("RX  yaw(CH1):");    Serial.print(userChannels[0]);
+      Serial.print("  pitch(CH2):");    Serial.print(userChannels[1]);
+      Serial.print("  thr(CH3):");      Serial.print(userChannels[2]);
+      Serial.print("  trim1(CH5):");    Serial.print(userChannels[4]);
+      Serial.print("  trim2(CH6):");    Serial.print(userChannels[5]);
+      Serial.print("  thr_lock(CH8):"); Serial.println(userChannels[7]);
+      for (int k = 0; k < 6; k++) lastPrinted[dbg[k]] = userChannels[dbg[k]];
+    }
+  }
+
   // Build and send the SBUS frame
   bfs::SbusData sbusData;
   for (int i = 0; i < 16; i++) {
-    sbusData.ch[i] = userChannels[i];
+    // Map RC microseconds [1000, 2000] to SBUS counts [172, 1811], matching a
+    // standard SBUS receiver. CH8 throttle lock: 2000 -> 1811 (unlocked),
+    // 1000 -> 172 (locked). This mapping is the tested-correct configuration.
+    sbusData.ch[i] = map(userChannels[i], 1000, 2000, 172, 1811);
   }
   sbusData.lost_frame = false;
   sbusData.failsafe   = !linkActive;

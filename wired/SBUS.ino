@@ -82,7 +82,10 @@ void loop() {
   // Build and send the SBUS frame
   bfs::SbusData sbusData;
   for (int i = 0; i < 16; i++) {
-    sbusData.ch[i] = userChannels[i];
+    // Map RC microseconds [1000, 2000] to SBUS counts [172, 1811], matching a
+    // standard SBUS receiver. CH8 throttle lock: 2000 -> 1811 (unlocked),
+    // 1000 -> 172 (locked). This mapping is the tested-correct configuration.
+    sbusData.ch[i] = map(userChannels[i], 1000, 2000, 172, 1811);
   }
   sbusData.lost_frame = false;
   sbusData.failsafe   = false;
