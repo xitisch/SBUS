@@ -11,7 +11,7 @@ variants of the link:
   that outputs the SBUS signal.
 
 Both variants speak the same host protocol, so `gui.py` is functionally
-identical in each — it just sends `<CH1,CH2,CH3,CH5,CH6>` over USB serial.
+identical in each: it just sends `<CH1,CH2,CH3,CH5,CH6>` over USB serial.
 
 ```
             wired/                                 wireless/
