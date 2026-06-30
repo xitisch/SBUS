@@ -84,7 +84,7 @@ except Exception as e:
 
 
 def send_channels(*_):
-    """Read all five sliders and send one packet to the ESP32."""
+    """Read the five sliders plus the CH8 toggle and send one packet to the ESP32."""
     if not (ser and ser.is_open):
         return
 
@@ -94,11 +94,12 @@ def send_channels(*_):
         ch3 = int(slider_ch3.get())
         ch5 = int(slider_ch5.get())
         ch6 = int(slider_ch6.get())
+        ch8 = int(ch8_var.get())
     except NameError:
-        # Called before all sliders exist (tkinter fires command during widget creation)
+        # Called before the widgets exist (tkinter fires command during widget creation)
         return
 
-    cmd = f"<{ch1},{ch2},{ch3},{ch5},{ch6}>\n"
+    cmd = f"<{ch1},{ch2},{ch3},{ch5},{ch6},{ch8}>\n"
     try:
         ser.write(cmd.encode('utf-8'))
         label_status.config(text=f"Sent: {cmd.strip()}", fg="green")
@@ -106,24 +107,30 @@ def send_channels(*_):
         label_status.config(text="Send failed", fg="red")
 
 
-def create_slider(label_text, default_val, min_val=1000, max_val=2000):
+def create_slider(label_text, default_val, min_val=1000, max_val=2000,
+                  label_font=("Arial", 11), value_font=("Arial", 11),
+                  label_width=14, pady=6):
     """Add a labeled horizontal slider row to root and return the Scale widget.
 
     The value box is an editable Entry: dragging the slider updates the box,
     and typing a value then pressing Enter moves the slider to that value.
+    Fonts and padding are parameterized so the primary flight controls can be
+    rendered larger than the secondary trim controls.
     """
     frame = tk.Frame(root)
-    frame.pack(fill='x', padx=20, pady=5)
+    frame.pack(fill='x', padx=20, pady=pady)
 
-    tk.Label(frame, text=label_text, width=16, anchor='w').pack(side='left')
+    tk.Label(frame, text=label_text, width=label_width, anchor='w',
+             font=label_font).pack(side='left')
 
     val_var = tk.StringVar(value=str(default_val))
-    val_entry = tk.Entry(frame, textvariable=val_var, width=6, justify='center')
+    val_entry = tk.Entry(frame, textvariable=val_var, width=6, justify='center',
+                         font=value_font)
     val_entry.pack(side='right')
 
     slider = ttk.Scale(frame, from_=min_val, to=max_val, orient='horizontal')
     slider.set(default_val)
-    slider.pack(side='left', fill='x', expand=True, padx=5)
+    slider.pack(side='left', fill='x', expand=True, padx=8)
 
     # Slider -> box: reflect the slider value in the box as it moves, then send
     slider.config(
@@ -146,15 +153,58 @@ def create_slider(label_text, default_val, min_val=1000, max_val=2000):
 
 root = tk.Tk()
 root.title("Flapping-Wing SBUS Controller")
-root.geometry("480x380")
+root.geometry("520x540")
 
-tk.Label(root, text="ESP32 Flapping-Wing Controller", font=("Arial", 14, "bold")).pack(pady=10)
+tk.Label(root, text="ESP32 Flapping-Wing Controller",
+         font=("Arial", 14, "bold")).pack(pady=(12, 6))
 
-slider_ch1 = create_slider("Yaw      (CH1):", 1500)
-slider_ch2 = create_slider("Pitch    (CH2):", 1500)
-slider_ch3 = create_slider("Throttle (CH3):", 1000)   # start at minimum; do not arm at neutral
-slider_ch5 = create_slider("Trim 1   (CH5):", 1500)
-slider_ch6 = create_slider("Trim 2   (CH6):", 1500)
+# --- CH8 throttle lock: master enable, shown as a big button at the very top ---
+# 1000 = off (servos locked), 2000 = on (armed). Default off for safety.
+ch8_var = tk.IntVar(value=1000)
+
+def refresh_ch8_button():
+    """Update the CH8 button's text/colour to match its current state."""
+    if ch8_var.get() == 2000:
+        ch8_btn.config(text="THROTTLE LOCK (CH8):   ON — ARMED",
+                       bg="#2e7d32", activebackground="#2e7d32", fg="white")
+    else:
+        ch8_btn.config(text="THROTTLE LOCK (CH8):   OFF — LOCKED",
+                       bg="#c62828", activebackground="#c62828", fg="white")
+
+def toggle_ch8():
+    ch8_var.set(1000 if ch8_var.get() == 2000 else 2000)
+    refresh_ch8_button()
+    send_channels()
+
+ch8_btn = tk.Button(root, command=toggle_ch8, font=("Arial", 13, "bold"),
+                    height=2, relief="raised", bd=3)
+ch8_btn.pack(fill='x', padx=20, pady=(0, 14))
+refresh_ch8_button()
+
+# --- Primary flight controls: large and prominent ---
+tk.Label(root, text="Flight Controls", font=("Arial", 10, "bold"),
+         fg="#333333", anchor='w').pack(fill='x', padx=20)
+
+_big_label = ("Arial", 12, "bold")
+_big_value = ("Arial", 12, "bold")
+slider_ch1 = create_slider("Yaw  (CH1)", 1500,
+                           label_font=_big_label, value_font=_big_value, pady=9)
+slider_ch2 = create_slider("Pitch  (CH2)", 1500,
+                           label_font=_big_label, value_font=_big_value, pady=9)
+slider_ch3 = create_slider("Throttle  (CH3)", 1000,  # start at minimum
+                           label_font=_big_label, value_font=_big_value, pady=9)
+
+# --- Trim controls: secondary, smaller, at the bottom ---
+ttk.Separator(root, orient='horizontal').pack(fill='x', padx=20, pady=(14, 4))
+tk.Label(root, text="Trim (servo center)", font=("Arial", 9),
+         fg="gray", anchor='w').pack(fill='x', padx=20)
+
+_small_label = ("Arial", 9)
+_small_value = ("Arial", 9)
+slider_ch5 = create_slider("Trim 1 (CH5)", 1500, label_font=_small_label,
+                           value_font=_small_value, label_width=12, pady=1)
+slider_ch6 = create_slider("Trim 2 (CH6)", 1500, label_font=_small_label,
+                           value_font=_small_value, label_width=12, pady=1)
 
 port_text = SERIAL_PORT if SERIAL_PORT else "No port"
 label_status = tk.Label(root, text=f"Connected: {port_text}", bd=1, relief='sunken', anchor='w')
